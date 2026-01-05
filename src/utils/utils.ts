@@ -27,6 +27,7 @@ export function ensureAllElements<T extends HTMLElement>(selectorElement: Select
 
 export type SelectorElement<T> = T | string;
 
+
 export function ensureElement<T extends HTMLElement>(selectorElement: SelectorElement<T>, context?: HTMLElement): T {
     if (isSelector(selectorElement)) {
         const elements = ensureAllElements<T>(selectorElement, context);
@@ -46,10 +47,8 @@ export function ensureElement<T extends HTMLElement>(selectorElement: SelectorEl
 
 export function cloneTemplate<T extends HTMLElement>(query: string | HTMLTemplateElement): T {
     const template = ensureElement(query) as HTMLTemplateElement;
-    if (!template.content.firstElementChild) {
-        throw new Error(`Template ${query} has no content`);
-    }
-    return template.content.firstElementChild.cloneNode(true) as T;
+    return template.content.firstElementChild!.cloneNode(true) as T; // не забыть убрать подавление "!"
+    
 }
 
 export function bem(block: string, element?: string, modifier?: string): { name: string, class: string } {
@@ -69,21 +68,17 @@ export function getObjectProperties(obj: object, filter?: (name: string, prop: P
         )
     )
         .filter(([name, prop]: [string, PropertyDescriptor]) => filter ? filter(name, prop) : (name !== 'constructor'))
-        .map(([name,]) => name);
+        .map(([name, _ ]) => name); // заменить на  .map(([name, prop]) => name);
 }
 
-/**
- * Устанавливает dataset атрибуты элемента
- */
+// Устанавливает dataset атрибуты элемента
 export function setElementData<T extends Record<string, unknown> | object>(el: HTMLElement, data: T) {
     for (const key in data) {
         el.dataset[key] = String(data[key]);
     }
 }
 
-/**
- * Получает типизированные данные из dataset атрибутов элемента
- */
+// Получает типизированные данные из dataset атрибутов элемента
 export function getElementData<T extends Record<string, unknown>>(el: HTMLElement, scheme: Record<string, Function>): T {
     const data: Partial<T> = {};
     for (const key in el.dataset) {
@@ -92,9 +87,7 @@ export function getElementData<T extends Record<string, unknown>>(el: HTMLElemen
     return data as T;
 }
 
-/**
- * Проверка на простой объект
- */
+// Проверка на простой объект
 export function isPlainObject(obj: unknown): obj is object {
     const prototype = Object.getPrototypeOf(obj);
     return  prototype === Object.getPrototypeOf({}) ||
