@@ -24,7 +24,7 @@ export interface IBuyer {
   address: string;   // адрес доставки
 }
 
-export interface IOrder {
-  buyer: IBuyer;     // данные покупателя
-  items: IProduct[]; // список выбранных товаров
+export interface IOrder extends IBuyer {
+  items: string[];   // список id выбранных товаров
+  total: number;     // общая сумма заказа
 }
