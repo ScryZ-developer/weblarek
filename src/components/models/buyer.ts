@@ -1,18 +1,18 @@
-import { IBuyer, TPayment } from "../../types";
+import { IBuyer } from "../../types";
 
 // Класс Buyer — управляет данными покупателя
 
 export class Buyer {
-  private payment: TPayment | ''; // способ оплаты (может быть пустым)
-  private email: string;          // email покупателя
-  private phone: string;          // телефон покупателя
-  private address: string;        // адрес доставки
+  private payment: IBuyer["payment"]; // способ оплаты
+  private email: string;              // email покупателя
+  private phone: string;              // телефон покупателя
+  private address: string;            // адрес доставки
 
   constructor(data?: Partial<IBuyer>) {
-    this.payment = data?.payment || ''; // по умолчанию пустая строка
-    this.email = data?.email || '';
-    this.phone = data?.phone || '';
-    this.address = data?.address || '';
+    this.payment = data?.payment || ""; // по умолчанию пустая строка
+    this.email = data?.email || "";
+    this.phone = data?.phone || "";
+    this.address = data?.address || "";
   }
 
   /**
@@ -28,21 +28,6 @@ export class Buyer {
 
   // Возвращает все данные покупателя
   getData(): IBuyer {
-    // Если payment пустой, выбрасываем ошибку или возвращаем значение по умолчанию
-    if (this.payment === '') {
-      throw new Error('Payment method is not selected');
-    }
-    
-    return {
-      payment: this.payment,
-      email: this.email,
-      phone: this.phone,
-      address: this.address,
-    };
-  }
-
-  // Возвращает все данные покупателя (включая пустое payment)
-  getDataWithEmpty(): Omit<IBuyer, 'payment'> & { payment: TPayment | '' } {
     return {
       payment: this.payment,
       email: this.email,
@@ -53,10 +38,10 @@ export class Buyer {
 
   // Очищает данные покупателя
   clear(): void {
-    this.payment = '';
-    this.email = '';
-    this.phone = '';
-    this.address = '';
+    this.payment = "";
+    this.email = "";
+    this.phone = "";
+    this.address = "";
   }
 
   /**
