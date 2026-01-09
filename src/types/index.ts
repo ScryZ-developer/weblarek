@@ -1,3 +1,4 @@
+import { Buyer } from '../components/models/buyer';
 export type ApiPostMethods = 'POST' | 'PUT' | 'DELETE';
 export type TPayment = 'card' | 'cash' | ''; 
 
@@ -27,4 +28,26 @@ export interface IBuyer {
 export interface IOrder extends IBuyer {
   items: string[];   // список id выбранных товаров
   total: number;     // общая сумма заказа
+}
+
+export interface CardSelectPayload {
+  id: string;
+}
+
+export interface CartRemovePayload {
+  index: number;
+}
+
+export interface CartRemoveByIdPayload {
+  id: string;
+}
+
+export interface OrderNextPayload {
+  payment: Buyer['payment'];
+  address: string;
+}
+
+export interface OrderConfirmPayload {
+  email: string;
+  phone: string;
 }

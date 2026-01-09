@@ -1,7 +1,8 @@
 /* Константа для получения полного пути для сервера. Для выполнения запроса 
 необходимо к API_URL добавить только ендпоинт. */
-export const API_URL = `${import.meta.env.VITE_API_ORIGIN}/api/weblarek`; 
 export const API_ORIGIN = import.meta.env.VITE_API_ORIGIN;
+
+export const API_URL = `${import.meta.env.VITE_API_ORIGIN}/api/weblarek`; 
 
 
 /* Константа для формирования полного пути к изображениям карточек. 
@@ -21,3 +22,5 @@ export const categoryMap: Record<string, { label: string; mod: string }> = {
 export const settings = {
 
 };
+
+console.log('API_ORIGIN:', import.meta.env.VITE_API_ORIGIN); // Добавьте для отладки

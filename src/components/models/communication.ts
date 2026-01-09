@@ -1,30 +1,45 @@
-import { IApi, IProduct, IOrder } from '../../types/index';
+// src/components/Models/Communication.ts
+import { Api } from '../base/Api';
+import { IProduct, IOrder } from '../../types';
 
 interface IApiProductsResponse {
   items: IProduct[];
-  total: number;
+  total?: number;
 }
 
 interface IApiOrderResponse {
-  id: string;
-  total: number;
+  total: number;   // сервер возвращает сумму списания
+  id?: string;     // иногда ещё приходит id заказа
 }
 
 export class Communication {
-  private api: IApi;
+  private api: Api;
 
-  constructor(api: IApi) {
+  constructor(api: Api) {
     this.api = api;
   }
 
   /** Получение массива товаров с сервера */
   async getProductList(): Promise<IProduct[]> {
-    const response = await this.api.get<IApiProductsResponse>(`/product/`);
-    return response.items || [];
+    try {
+      // путь относительный, т.к. baseURL уже есть внутри Api
+      const response = await this.api.get<IApiProductsResponse>('/product/');
+      return response.items ?? [];
+    } catch (error) {
+      console.error('Ошибка при получении товаров:', error);
+      return [];
+    }
   }
 
   /** Отправка данных заказа на сервер */
   async sendOrder(order: IOrder): Promise<IApiOrderResponse> {
-    return await this.api.post<IApiOrderResponse>('/order/', order);
+    try {
+      // тоже относительный путь
+      return await this.api.post<IApiOrderResponse>('/order/', order);
+    } catch (error) {
+      console.error('Ошибка при отправке заказа:', error);
+      // возвращаем безопасный дефолт, чтобы не упал рендер Success
+      return { total: 0 };
+    }
   }
 }
