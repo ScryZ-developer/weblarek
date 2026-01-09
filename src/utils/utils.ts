@@ -1,3 +1,4 @@
+import { API_ORIGIN } from './constants';
 export function pascalToKebab(value: string): string {
     return value.replace(/([a-z0–9])([A-Z])/g, "$1-$2").toLowerCase();
 }
@@ -71,14 +72,18 @@ export function getObjectProperties(obj: object, filter?: (name: string, prop: P
         .map(([name, _ ]) => name); // заменить на  .map(([name, prop]) => name);
 }
 
-// Устанавливает dataset атрибуты элемента
+/**
+ * Устанавливает dataset атрибуты элемента
+ */
 export function setElementData<T extends Record<string, unknown> | object>(el: HTMLElement, data: T) {
     for (const key in data) {
         el.dataset[key] = String(data[key]);
     }
 }
 
-// Получает типизированные данные из dataset атрибутов элемента
+/**
+ * Получает типизированные данные из dataset атрибутов элемента
+ */
 export function getElementData<T extends Record<string, unknown>>(el: HTMLElement, scheme: Record<string, Function>): T {
     const data: Partial<T> = {};
     for (const key in el.dataset) {
@@ -87,7 +92,9 @@ export function getElementData<T extends Record<string, unknown>>(el: HTMLElemen
     return data as T;
 }
 
-// Проверка на простой объект
+/**
+ * Проверка на простой объект
+ */
 export function isPlainObject(obj: unknown): obj is object {
     const prototype = Object.getPrototypeOf(obj);
     return  prototype === Object.getPrototypeOf({}) ||
@@ -128,4 +135,40 @@ export function createElement<
         }
     }
     return element;
+}
+export function resolveImagePath(path: string): string {
+  if (!path) return '';
+
+  // 1) Абсолютный URL — нормализуем старый /api/... → /content/... и svg → png
+  if (/^https?:\/\//.test(path)) {
+    return path
+      .replace('/api/weblarek/', '/content/weblarek/')
+      .replace(/\.svg(\?.*)?$/, '.png$1');
+  }
+
+  // 2) Уже правильный относительный путь к контенту
+  if (path.startsWith('/content/weblarek/')) {
+    return `${API_ORIGIN.replace(/\/$/, '')}${path}`;
+  }
+
+  // 3) Относительный старый api-путь → переводим в content + png
+  if (path.startsWith('/api/weblarek/')) {
+    const file = path.replace('/api/weblarek/', '').replace(/\.svg(\?.*)?$/, '.png$1');
+    return `${API_ORIGIN.replace(/\/$/, '')}/content/weblarek/${file}`;
+  }
+
+  // 4) Любой другой относительный путь (например "/5_Dots.svg" или "Leaf.svg")
+  const file = path.replace(/^\//, '').replace(/\.svg(\?.*)?$/, '.png$1');
+  return `${API_ORIGIN.replace(/\/$/, '')}/content/weblarek/${file}`;
+}
+
+export enum EventNames {
+  CardSelect = 'card:select',
+  CartAdd = 'cart:add',
+  CartRemove = 'cart:remove',
+  CartRemoveById = 'cart:remove-by-id',
+  CartOrder = 'cart:order',
+  OrderNext = 'order:next',
+  OrderConfirm = 'order:confirm',
+  SuccessClose = 'success:close',
 }
