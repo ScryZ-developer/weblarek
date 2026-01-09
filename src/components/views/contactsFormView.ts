@@ -1,14 +1,10 @@
 import { cloneTemplate } from '../../utils/template';
-import { events } from '../base/Events';
-
-export interface ContactsData {
-  email: string;
-  phone: string;
-}
+import { EventEmitter } from '../base/Events';
 
 /**
  * Форма №2 — контакты (email, phone)
- * Генерирует: 'order:confirm' с detail: { email, phone }
+ * Эмитит: 'buyer:field-change' при изменении полей
+ * Эмитит: 'order:confirm' при отправке формы
  */
 export class ContactsFormView {
   private element: HTMLFormElement;
@@ -17,7 +13,7 @@ export class ContactsFormView {
   private errorsEl: HTMLElement;
   private submitBtn: HTMLButtonElement;
 
-  constructor() {
+  constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLFormElement>('contacts');
 
     this.emailInput = this.element.querySelector('input[name="email"]')!;
@@ -25,51 +21,45 @@ export class ContactsFormView {
     this.errorsEl = this.element.querySelector('.form__errors')!;
     this.submitBtn = this.element.querySelector('button[type="submit"]')!;
 
-    this.emailInput.addEventListener('input', () => this.updateState());
-    this.phoneInput.addEventListener('input', () => this.updateState());
-
-    this.element.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const { valid } = this.validate();
-      if (!valid) return;
-
-      const data: ContactsData = {
-        email: this.emailInput.value.trim(),
-        phone: this.phoneInput.value.trim(),
-      };
-
-      // передаём сразу email и phone (как ожидает презентер)
-      events.emit<ContactsData>('order:confirm', data);
+    // Обработчики полей ввода
+    this.emailInput.addEventListener('input', () => {
+      const value = this.emailInput.value.trim();
+      this.events.emit('buyer:field-change', { key: 'email', value });
     });
 
-    this.updateState();
+    this.phoneInput.addEventListener('input', () => {
+      const value = this.phoneInput.value.trim();
+      this.events.emit('buyer:field-change', { key: 'phone', value });
+    });
+
+    // Обработчик отправки формы
+    this.element.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.events.emit('order:confirm');
+    });
   }
 
   getElement(): HTMLFormElement {
     return this.element;
   }
 
-  private validate() {
-    const email = this.emailInput.value.trim();
-    const phone = this.phoneInput.value.trim();
-
-    const emailOk = /\S+@\S+\.\S+/.test(email);
-    const digits = phone.replace(/\D/g, '');
-    const phoneOk = digits.length >= 10;
-
-    const messages: string[] = [];
-    if (!emailOk) messages.push('Неверный email');
-    if (!phoneOk) messages.push('Неверный телефон');
-
-    return {
-      valid: emailOk && phoneOk,
-      messages,
-    };
+  /** Устанавливает email (вызывается из presenter) */
+  set email(value: string) {
+    this.emailInput.value = value ?? '';
   }
 
-  private updateState() {
-    const { valid, messages } = this.validate();
-    this.submitBtn.disabled = !valid;
-    this.errorsEl.textContent = valid ? '' : messages.join(', ');
+  /** Устанавливает phone (вызывается из presenter) */
+  set phone(value: string) {
+    this.phoneInput.value = value ?? '';
+  }
+
+  /** Устанавливает ошибки валидации (вызывается из presenter) */
+  set errors(errors: string[]) {
+    this.errorsEl.textContent = errors.join(', ');
+  }
+
+  /** Устанавливает валидность формы (вызывается из presenter) */
+  set valid(isValid: boolean) {
+    this.submitBtn.disabled = !isValid;
   }
 }

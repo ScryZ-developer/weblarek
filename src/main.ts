@@ -1,56 +1,78 @@
 import './scss/styles.scss';
 import { Api } from './components/base/Api';
+import { EventEmitter } from './components/base/Events';
 import { Communication } from './components/models/communication';  
 import { Catalog } from "./components/models/catalog";
 import { Cart } from "./components/models/cart";
 import { Buyer } from "./components/models/buyer";
-import { API_URL, categoryMap } from "../src/utils/constants";
+import { API_URL } from "../src/utils/constants";
 
 import { ModalView } from './components/views/modalView';
 import { ProductPreviewView } from './components/views/productPreviewView';
 import { CatalogView } from './components/views/catalogView';
 import { CartView } from './components/views/cartView';
+import { CartItemView } from './components/views/cartItemView';
 import { OrderFormView } from './components/views/orderFormView';
 import { ContactsFormView } from './components/views/contactsFormView';
 import { SuccessView } from './components/views/successView';
+import { HeaderView } from './components/views/headerView';
+import { CardView } from './components/views/cardView';
 
-import { IProduct, OrderNextPayload } from '../src/types';
-import { events } from './components/base/Events';
-import { BasketCounterView } from './components/views/basketView';
+import { IProduct } from '../src/types';
 import { EventNames } from '../src/utils/utils';
-import { toCardViewData, toCartItemData } from './utils/mapper';
+import { normalizeCategory } from './utils/mapper';
+
+// Создание экземпляров в глобальной области
+const events = new EventEmitter();
+
+// Модели
+const catalog = new Catalog(events);
+const cart = new Cart(events);
+const buyer = new Buyer(events);
+
+// API и коммуникация
+const api = new Api(API_URL);
+const communication = new Communication(api);
+
+// Представления (создаются один раз)
+const catalogView = new CatalogView('.gallery');
+const cartView = new CartView(events);
+const modal = new ModalView(events, '#modal-container');
+const headerView = new HeaderView(events);
+const productPreviewView = new ProductPreviewView(events);
+const orderFormView = new OrderFormView(events);
+const contactsFormView = new ContactsFormView(events);
+const successView = new SuccessView(events);
 
 class AppPresenter {
-  private catalog = new Catalog();
-  private cart = new Cart();
-  private buyer = new Buyer();
-
-  private api = new Api(API_URL);
-  private communication = new Communication(this.api);
-
-  private catalogView = new CatalogView('.gallery');
-  private cartView = new CartView();
-  private modal = new ModalView('#modal-container');
-  private basketCounter = new BasketCounterView();
-
-  // Утилиты
-  private normalizeCategory(raw: string): string {
-    return categoryMap[raw]?.mod || 'other';
-  }
+  constructor(
+    private events: EventEmitter,
+    private catalog: Catalog,
+    private cart: Cart,
+    private buyer: Buyer,
+    private communication: Communication,
+    private catalogView: CatalogView,
+    private cartView: CartView,
+    private modal: ModalView,
+    private headerView: HeaderView,
+    private productPreviewView: ProductPreviewView,
+    private orderFormView: OrderFormView,
+    private contactsFormView: ContactsFormView,
+    private successView: SuccessView
+  ) {}
 
   // ==== Инициализация ====
   public init() {
     this.loadProducts();
     this.initEvents();
-    this.updateBasketCounter();
   }
 
   // ==== Загрузка каталога ====
   private async loadProducts() {
     try {
       const productlist = await this.communication.getProductList();
+      // Изменение модели - вызовет событие catalog:change
       this.catalog.setProducts(productlist);
-      this.catalogView.render(toCardViewData(productlist)); // УБРАЛ ДУБЛЬ
     } catch (err) {
       console.error('Ошибка загрузки каталога:', err);
     }
@@ -58,75 +80,145 @@ class AppPresenter {
 
   // ==== События ====
   private initEvents() {
-    // карточка товара
-    events.on<{ id: string }>('card:select', ({ id }) => {
+    // Событие изменения каталога - обновление представления
+    this.events.on(EventNames.CatalogChange, () => {
+      const products = this.catalog.getProducts();
+      const cardViews = products.map(product => {
+        const cardView = new CardView(this.events);
+        const cardData = {
+          id: product.id,
+          title: product.title,
+          price: product.price ?? null,
+          category: normalizeCategory(product.category),
+          image: product.image,
+        };
+        return cardView.render(cardData);
+      });
+      this.catalogView.items = cardViews;
+    });
+
+    // Выбор карточки товара - изменение модели
+    this.events.on<{ id: string }>(EventNames.CardSelect, ({ id }) => {
       const product = this.catalog.getProductById(id);
       if (!product) return;
-
+      
       const normalizedProduct = {
         ...product,
-        category: this.normalizeCategory(product.category),
+        category: normalizeCategory(product.category),
       };
+      
+      // Изменение модели - вызовет событие catalog:product-selected
+      this.catalog.setSelectedProduct(normalizedProduct);
+    });
 
-      const previewView = new ProductPreviewView();
-      previewView.setCartChecker((pid) => this.cart.hasItem(pid));
+    // Событие выбора продукта - обновление представления preview
+    this.events.on(EventNames.CatalogProductSelected, () => {
+      const product = this.catalog.getSelectedProduct();
+      if (!product) return;
+      
       const inCart = this.cart.hasItem(product.id);
-      this.modal.open(previewView.render(normalizedProduct, inCart));
+      this.modal.open(this.productPreviewView.render(product, inCart));
     });
 
-    // открыть корзину
-    const basketButton = document.querySelector<HTMLButtonElement>('.header__basket');
-    if (basketButton) {
-      basketButton.addEventListener('click', () => {
-        this.modal.open(this.cartView.getElement());
-      });
-    }
+    // Открытие корзины
+    this.events.on(EventNames.BasketOpen, () => {
+      this.modal.open(this.cartView.getElement());
+    });
 
-    // добавить товар
-    events.on<IProduct>('cart:add', (product) => {
+    // Добавление товара в корзину - изменение модели
+    this.events.on<IProduct>(EventNames.CartAdd, (product) => {
       this.cart.addItem(product);
-      this.cartView.render(toCartItemData(this.cart.getItems()));
-      this.updateBasketCounter();
-      events.emit('cart:changed');
+      // Модель вызовет событие cart:change
     });
 
-    // удалить товар (по индексу)
-    events.on<{ index: number }>('cart:remove', ({ index }) => {
+    // Удаление товара из корзины - изменение модели
+    this.events.on<{ product: IProduct }>(EventNames.CartRemove, ({ product }) => {
+      this.cart.removeItem(product);
+      // Модель вызовет событие cart:change
+    });
+
+    // Событие изменения корзины - обновление представления
+    this.events.on(EventNames.CartChange, () => {
       const items = this.cart.getItems();
-      items.splice(index, 1);
-
-      this.cart.clear();
-      items.forEach(item => this.cart.addItem(item));
-
-      this.cartView.render(toCartItemData(this.cart.getItems()));
-      this.updateBasketCounter();
-      events.emit('cart:changed');
+      
+      // Создаем элементы списка корзины
+      const cartItemViews = items.map((item, index) => {
+        const cartItemView = new CartItemView(this.events);
+        return cartItemView.render(item, index);
+      });
+      
+      this.cartView.items = cartItemViews;
+      this.cartView.total = this.cart.getTotalPrice();
+      this.cartView.orderButtonDisabled = items.length === 0;
+      this.headerView.updateCounter(this.cart.getCount());
     });
 
-    // удалить товар (по id) — для кнопки в превью
-    events.on<{ id: string }>('cart:remove-by-id', ({ id }) => {
-      this.cart.removeItem({ id } as any);
-      this.cartView.render(toCartItemData(this.cart.getItems()));
-      this.updateBasketCounter();
-      events.emit('cart:changed');
+    // Переключение товара в превью (добавить/удалить) - изменение модели
+    this.events.on(EventNames.PreviewToggle, () => {
+      const product = this.catalog.getSelectedProduct();
+      if (!product) return;
+      
+      if (this.cart.hasItem(product.id)) {
+        this.cart.removeItem(product);
+      } else {
+        this.cart.addItem(product);
+      }
+      // Модель вызовет событие cart:change, которое обновит представление
+      this.modal.close();
     });
 
-    // оформить заказ (шаг 1)
-    events.on('cart:order', () => {
-      const orderForm = new OrderFormView(this.buyer.getData());
-      this.modal.open(orderForm.getElement());
+    // Оформить заказ (шаг 1) - открытие формы
+    this.events.on(EventNames.CartOrder, () => {
+      this.modal.open(this.orderFormView.getElement());
     });
 
-    // шаг 1 → шаг 2
-    events.on<OrderNextPayload>(EventNames.OrderNext, ({ payment, address }) => {
-      this.buyer.setData({ payment, address });
-      const contactsForm = new ContactsFormView();
-      this.modal.open(contactsForm.getElement());
+    // Изменение поля покупателя - изменение модели
+    this.events.on<{ key: 'payment' | 'email' | 'phone' | 'address'; value: any }>(EventNames.BuyerFieldChange, ({ key, value }) => {
+      this.buyer.setField(key, value);
+      // Модель вызовет событие buyer:change
     });
 
-    // шаг 2 → подтверждение
-    events.on<{ email: string; phone: string }>('order:confirm', async ({ email, phone }) => {
-      this.buyer.setData({ email, phone });
+    // Событие изменения модели покупателя - обновление представления форм
+    this.events.on(EventNames.BuyerChange, () => {
+      const buyerData = this.buyer.getData();
+      const errors = this.buyer.validate();
+      
+      // Обновление формы оплаты
+      this.orderFormView.payment = buyerData.payment;
+      this.orderFormView.address = buyerData.address;
+      const paymentErrors: string[] = [];
+      if (errors.payment) paymentErrors.push(errors.payment);
+      if (errors.address) paymentErrors.push(errors.address);
+      this.orderFormView.errors = paymentErrors;
+      this.orderFormView.valid = paymentErrors.length === 0;
+      
+      // Обновление формы контактов
+      this.contactsFormView.email = buyerData.email;
+      this.contactsFormView.phone = buyerData.phone;
+      const contactErrors: string[] = [];
+      if (errors.email) contactErrors.push(errors.email);
+      if (errors.phone) contactErrors.push(errors.phone);
+      this.contactsFormView.errors = contactErrors;
+      this.contactsFormView.valid = contactErrors.length === 0;
+    });
+
+    // Переход к шагу 2 (контакты) - открытие формы контактов
+    this.events.on(EventNames.OrderNext, () => {
+      // Проверяем валидность формы оплаты
+      const errors = this.buyer.validate();
+      if (errors.payment || errors.address) {
+        return; // Не переходим, если форма невалидна
+      }
+      this.modal.open(this.contactsFormView.getElement());
+    });
+
+    // Подтверждение заказа (шаг 2) - отправка заказа
+    this.events.on(EventNames.OrderConfirm, async () => {
+      // Проверяем валидность всех данных
+      const errors = this.buyer.validate();
+      if (Object.keys(errors).length > 0) {
+        return; // Не отправляем, если данные невалидны
+      }
 
       const order = {
         ...this.buyer.getData(),
@@ -136,28 +228,38 @@ class AppPresenter {
 
       try {
         const result: { total: number } = await this.communication.sendOrder(order);
-        const success = new SuccessView();
-        this.modal.open(success.render(result.total));
+        this.modal.open(this.successView.render(result.total));
 
+        // Очищаем модели - они вызовут соответствующие события
         this.cart.clear();
-        this.cartView.render([]);
-        this.updateBasketCounter();
+        this.buyer.clear();
       } catch (err) {
         console.error('Ошибка при заказе:', err);
       }
     });
 
-    // закрытие success
-    events.on('success:close', () => {
+    // Закрытие окна успеха
+    this.events.on(EventNames.SuccessClose, () => {
       this.modal.close();
     });
   }
-
-  // ==== Счётчик корзины ====
-  private updateBasketCounter() {
-    this.basketCounter.update(this.cart.getCount());
-  }
 }
 
-const app = new AppPresenter();
+// Создание и инициализация приложения
+const app = new AppPresenter(
+  events,
+  catalog,
+  cart,
+  buyer,
+  communication,
+  catalogView,
+  cartView,
+  modal,
+  headerView,
+  productPreviewView,
+  orderFormView,
+  contactsFormView,
+  successView
+);
+
 app.init();

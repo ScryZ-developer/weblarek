@@ -1,11 +1,5 @@
 import { cloneTemplate } from '../../utils/template';
-import { events } from '../base/Events';
-
-export interface CartItemData {
-  id: string;
-  title: string;
-  price: number;
-}
+import { EventEmitter } from '../base/Events';
 
 export class CartView {
   private element: HTMLElement;
@@ -13,39 +7,33 @@ export class CartView {
   private totalEl: HTMLElement;
   private orderButton: HTMLButtonElement;
 
-  constructor() {
+  constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLElement>('basket');
     this.listEl = this.element.querySelector('.basket__list')!;
     this.totalEl = this.element.querySelector('.basket__price')!;
     this.orderButton = this.element.querySelector('.basket__button')!;
 
     this.orderButton.addEventListener('click', () => {
-      events.emit('cart:order');
+      this.events.emit('cart:order');
     });
   }
 
-  /** Отрисовываем список товаров */
-  render(items: CartItemData[]) {
+  /** Устанавливает готовую разметку списка товаров */
+  set items(items: HTMLElement[]) {
     this.listEl.innerHTML = '';
-    let total = 0;
-
-    items.forEach((item, index) => {
-      const li = cloneTemplate<HTMLLIElement>('card-basket');
-      li.querySelector('.basket__item-index')!.textContent = String(index + 1);
-      li.querySelector('.card__title')!.textContent = item.title;
-      li.querySelector('.card__price')!.textContent = `${item.price} синапсов`;
-
-      li.querySelector('.basket__item-delete')!
-        .addEventListener('click', () => {
-          events.emit('cart:remove', { index });
-        });
-
-      this.listEl.appendChild(li);
-      total += item.price;
+    items.forEach(item => {
+      this.listEl.appendChild(item);
     });
+  }
 
+  /** Устанавливает общую стоимость */
+  set total(total: number) {
     this.totalEl.textContent = `${total} синапсов`;
-    this.orderButton.disabled = items.length === 0;
+  }
+
+  /** Устанавливает состояние кнопки заказа */
+  set orderButtonDisabled(disabled: boolean) {
+    this.orderButton.disabled = disabled;
   }
 
   getElement(): HTMLElement {

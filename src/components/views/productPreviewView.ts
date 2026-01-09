@@ -2,7 +2,7 @@ import { cloneTemplate } from '../../utils/template';
 import { categoryMap } from '../../utils/constants';
 import { IProduct } from '../../types/index';
 import { resolveImagePath } from '../../utils/utils';
-import { events } from '../base/Events';
+import { EventEmitter } from '../base/Events';
 
 export class ProductPreviewView {
   private element: HTMLElement;
@@ -13,11 +13,7 @@ export class ProductPreviewView {
   private imageEl: HTMLImageElement;
   private buttonEl: HTMLButtonElement;
 
-  // текущий товар и функция-проверка «товар в корзине?»
-  private currentProduct: IProduct | null = null;
-  private checkInCart: ((id: string) => boolean) | null = null;
-
-  constructor() {
+  constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLElement>('card-preview');
     this.titleEl = this.element.querySelector('.card__title')!;
     this.descriptionEl = this.element.querySelector('.card__text')!;
@@ -26,31 +22,20 @@ export class ProductPreviewView {
     this.imageEl = this.element.querySelector('.card__image')!;
     this.buttonEl = this.element.querySelector('.card__button')!;
 
-    // когда корзина меняется — обновляем кнопку в открытой карточке
-  events.on('cart:changed', () => {
-      if (this.currentProduct && this.checkInCart) {
-        const inCart = this.checkInCart(this.currentProduct.id);
-        this.updateButton(this.currentProduct, inCart);
-      }
+    // Обработчик кнопки устанавливается один раз
+    this.buttonEl.addEventListener('click', () => {
+      this.events.emit('preview:toggle');
     });
   }
 
-  /** Даст вьюшке способ узнать «в корзине ли товар» */
-  public setCartChecker(fn: (id: string) => boolean) {
-    this.checkInCart = fn;
-  }
-
-  /** Рендер карточки. inCart — текущее состояние для кнопки */
-  render(product: IProduct, inCart = false): HTMLElement {
-    this.currentProduct = product;
-
+  /** Рендер карточки */
+  render(product: IProduct, inCart: boolean): HTMLElement {
     // Текстовые поля
     this.titleEl.textContent = product.title;
     this.descriptionEl.textContent = product.description || '';
 
     // Цена
-    this.priceEl.textContent =
-      product.price === null ? 'Бесценно' : `${product.price} синапсов`;
+    this.setPrice(product.price);
 
     // Категория + модификатор
     const entry = Object.values(categoryMap).find((c) => c.mod === product.category);
@@ -62,7 +47,7 @@ export class ProductPreviewView {
     this.imageEl.alt = product.title;
 
     // Кнопка (зависит от inCart и цены)
-   this.updateButton(product, inCart);
+    this.updateButton(product.price, inCart);
 
     return this.element;
   }
@@ -71,28 +56,20 @@ export class ProductPreviewView {
     return this.element;
   }
 
-  /** Обновляет текст/состояние/обработчик кнопки */
-  private updateButton(product: IProduct, inCart: boolean) {
-  if (product.price === null) {
-    this.priceEl.textContent = 'Бесценно';
-    this.buttonEl.disabled = true;
-    this.buttonEl.textContent = 'Недоступно';
-    this.buttonEl.onclick = null;
-  } else {
-    this.priceEl.textContent = `${product.price} синапсов`;
-    this.buttonEl.disabled = false;
-    this.buttonEl.onclick = null;
+  /** Устанавливает цену */
+  private setPrice(price: number | null) {
+    this.priceEl.textContent =
+      price === null ? 'Бесценно' : `${price} синапсов`;
+  }
 
-    if (inCart) {
-      this.buttonEl.textContent = 'Удалить из корзины';
-      this.buttonEl.onclick = () => {
-        events.emit('cart:remove-by-id', { id: product.id });
-      };
+  /** Обновляет текст/состояние кнопки */
+  private updateButton(price: number | null, inCart: boolean) {
+    if (price === null) {
+      this.buttonEl.disabled = true;
+      this.buttonEl.textContent = 'Недоступно';
     } else {
-      this.buttonEl.textContent = 'Купить';
-      this.buttonEl.onclick = () => {
-        events.emit('cart:add', product);
-      };
+      this.buttonEl.disabled = false;
+      this.buttonEl.textContent = inCart ? 'Удалить из корзины' : 'Купить';
     }
-  }}
+  }
 }

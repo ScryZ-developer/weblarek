@@ -1,13 +1,13 @@
 import { cloneTemplate } from '../../utils/template';
+import { EventEmitter } from '../base/Events';
 import { IBuyer } from '../../types';
-import { events } from '../base/Events';
 
 type Payment = IBuyer['payment']; // 'card' | 'cash'
 
 /**
  * Форма шага 1 "Способ оплаты + адрес".
- * События:
- *  - 'order:next'  payload: { payment: 'card'|'cash', address: string }
+ * Эмитит: 'buyer:field-change' при изменении полей
+ * Эмитит: 'order:next' при отправке формы
  */
 export class OrderFormView {
   private element: HTMLFormElement;
@@ -17,9 +17,7 @@ export class OrderFormView {
   private submitBtn: HTMLButtonElement;
   private errorEl: HTMLElement;
 
-  private state: { payment?: Payment; address: string } = { address: '' };
-
-  constructor(initial?: Partial<IBuyer>) {
+  constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLFormElement>('order');
 
     this.btnCard = this.element.querySelector<HTMLButtonElement>('button[name="card"]')!;
@@ -28,28 +26,27 @@ export class OrderFormView {
     this.submitBtn = this.element.querySelector<HTMLButtonElement>('.order__button')!;
     this.errorEl = this.element.querySelector<HTMLElement>('.form__errors')!;
 
-    // префилл из initial
-    if (initial?.payment) this.state.payment = initial.payment as Payment;
-    if (initial?.address) this.state.address = initial.address;
-
-    this.syncFromStateToView();
-
-    // подписки
-    this.btnCard.addEventListener('click', () => this.setPayment('card'));
-    this.btnCash.addEventListener('click', () => this.setPayment('cash'));
-    this.addressInput.addEventListener('input', () => {
-      this.state.address = this.addressInput.value.trim();
-      this.validateAndToggle();
+    // Обработчики кнопок оплаты
+    this.btnCard.addEventListener('click', () => {
+      this.setPayment('card');
+      this.events.emit('buyer:field-change', { key: 'payment', value: 'card' });
     });
 
+    this.btnCash.addEventListener('click', () => {
+      this.setPayment('cash');
+      this.events.emit('buyer:field-change', { key: 'payment', value: 'cash' });
+    });
+
+    // Обработчик поля адреса
+    this.addressInput.addEventListener('input', () => {
+      const value = this.addressInput.value.trim();
+      this.events.emit('buyer:field-change', { key: 'address', value });
+    });
+
+    // Обработчик отправки формы
     this.element.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (this.validateAndToggle()) {
-        events.emit<{ payment: Payment; address: string }>('order:next', {
-          payment: this.state.payment!,
-          address: this.state.address,
-        });
-      }
+      this.events.emit('order:next');
     });
   }
 
@@ -58,19 +55,27 @@ export class OrderFormView {
     return this.element;
   }
 
+  /** Устанавливает способ оплаты (вызывается из presenter) */
+  set payment(value: Payment) {
+    this.setPayment(value);
+  }
+
+  /** Устанавливает адрес (вызывается из presenter) */
+  set address(value: string) {
+    this.addressInput.value = value ?? '';
+  }
+
+  /** Устанавливает ошибки валидации (вызывается из presenter) */
+  set errors(errors: string[]) {
+    this.errorEl.textContent = errors.join('. ');
+  }
+
+  /** Устанавливает валидность формы (вызывается из presenter) */
+  set valid(isValid: boolean) {
+    this.submitBtn.disabled = !isValid;
+  }
+
   private setPayment(payment: Payment) {
-    this.state.payment = payment;
-    this.syncPaymentButtons();
-    this.validateAndToggle();
-  }
-
-  private syncFromStateToView() {
-    this.addressInput.value = this.state.address ?? '';
-    this.syncPaymentButtons();
-    this.validateAndToggle();
-  }
-
-  private syncPaymentButtons() {
     const active = 'button_alt-active';
     const normal = 'button_alt';
 
@@ -79,29 +84,12 @@ export class OrderFormView {
     this.btnCash.classList.remove(active);
     this.btnCash.classList.add(normal);
 
-    if (this.state.payment === 'card') {
+    if (payment === 'card') {
       this.btnCard.classList.add(active);
       this.btnCard.classList.remove(normal);
-    } else if (this.state.payment === 'cash') {
+    } else if (payment === 'cash') {
       this.btnCash.classList.add(active);
       this.btnCash.classList.remove(normal);
     }
-  }
-
-  private validate(): string[] {
-    const errors: string[] = [];
-    if (!this.state.payment) errors.push('Выберите способ оплаты');
-    if (!this.state.address || this.state.address.length < 3) {
-      errors.push('Укажите адрес доставки');
-    }
-    return errors;
-  }
-
-  private validateAndToggle(): boolean {
-    const errors = this.validate();
-    this.errorEl.textContent = errors.join('. ');
-    const valid = errors.length === 0;
-    this.submitBtn.disabled = !valid;
-    return valid;
   }
 }

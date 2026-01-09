@@ -1,7 +1,7 @@
 import { cloneTemplate } from '../../utils/template';
 import { categoryMap } from '../../utils/constants';
 import { resolveImagePath } from '../../utils/utils';
-import { events } from '../base/Events';
+import { EventEmitter } from '../base/Events';
 
 export interface CardViewData {
   id: string;
@@ -18,20 +18,15 @@ export class CardView {
   private categoryEl: HTMLElement;
   private imageEl: HTMLImageElement;
 
-  constructor(private data: CardViewData) {
+  constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLButtonElement>('card-catalog');
     this.titleEl = this.element.querySelector('.card__title')!;
     this.priceEl = this.element.querySelector('.card__price')!;
     this.categoryEl = this.element.querySelector('.card__category')!;
     this.imageEl = this.element.querySelector('.card__image')!;
-
-    this.render(data);
-    this.attachEvents();
   }
 
   render(data: CardViewData): HTMLButtonElement {
-    this.data = data;
-
     this.titleEl.textContent = data.title;
 
     // Цена: если null → пишем "Бесценно"
@@ -45,17 +40,16 @@ export class CardView {
     this.imageEl.src = resolveImagePath(data.image);
     this.imageEl.alt = data.title;
 
+    // Обработчик клика - эмитим событие с id
+    this.element.onclick = () => {
+      this.events.emit('card:select', { id: data.id });
+    };
+
     return this.element;
   }
 
   getElement(): HTMLButtonElement {
     return this.element;
-  }
-
-  private attachEvents() {
-    this.element.addEventListener('click', () => {
-      events.emit('card:select', { id: this.data.id });
-    });
   }
 
   private setCategory(category: string) {

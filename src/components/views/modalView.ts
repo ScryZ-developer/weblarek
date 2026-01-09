@@ -1,5 +1,5 @@
 // src/components/Views/ModalView.ts
-import { events } from '../base/Events';
+import { EventEmitter } from '../base/Events';
 
 export class ModalView {
   private root: HTMLElement;
@@ -7,7 +7,7 @@ export class ModalView {
   private closeButton: HTMLButtonElement | null;
   private escHandler: (e: KeyboardEvent) => void;
 
-  constructor(rootOrSelector: HTMLElement | string = '#modal-container') {
+  constructor(_events: EventEmitter, rootOrSelector: HTMLElement | string = '#modal-container') {
     const root =
       typeof rootOrSelector === 'string'
         ? document.querySelector<HTMLElement>(rootOrSelector)
@@ -46,19 +46,16 @@ export class ModalView {
   private onOverlayClick(e: MouseEvent) {
     if (e.target === this.root) {
       this.close();
-      events.emit('modal:close');
     }
   }
 
   private onCloseClick() {
     this.close();
-    events.emit('modal:close');
   }
 
   private onEsc(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       this.close();
-      events.emit('modal:close');
     }
   }
 
@@ -67,7 +64,6 @@ export class ModalView {
     this.root.classList.add('modal_active');
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', this.escHandler);
-    events.emit('modal:open');
   }
 
   close() {

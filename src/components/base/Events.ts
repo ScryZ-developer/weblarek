@@ -1,8 +1,8 @@
 // Хорошая практика даже простые типы выносить в алиасы
 // Зато когда захотите поменять это достаточно сделать в одном месте
-type EventName = string | RegExp;
-type Subscriber = Function;
-type EmitterEvent = {
+export type EventName = string | RegExp;
+export type Subscriber = Function;
+export type EmitterEvent = {
     eventName: string,
     data: unknown
 };
@@ -77,17 +77,15 @@ export class EventEmitter implements IEvents {
         this._events = new Map<string, Set<Subscriber>>();
     }
 
-    /**
-     * Сделать коллбек триггер, генерирующий событие при вызове
-     */
-    trigger<T extends object>(eventName: string, context?: Partial<T>) {
-        return (event: object = {}) => {
-            this.emit(eventName, {
-                ...(event || {}),
-                ...(context || {})
-            });
-        };
-    }
+  /**
+   * Сделать коллбек триггер, генерирующий событие при вызове
+   */
+  trigger<T extends object>(eventName: string, context?: Partial<T>) {
+    return (event: object = {}) => {
+      this.emit(eventName, {
+        ...(event || {}),
+        ...(context || {})
+      });
+    };
+  }
 }
-
-export const events = new EventEmitter();

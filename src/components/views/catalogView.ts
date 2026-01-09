@@ -1,22 +1,17 @@
-import { CardView, CardViewData } from './cardView';
+import { ensureElement } from '../../utils/utils';
 
 export class CatalogView {
   private container: HTMLElement;
 
   constructor(containerSelector: string) {
-    const container = document.querySelector<HTMLElement>(containerSelector);
-    if (!container) {
-      throw new Error(`Не найден контейнер: ${containerSelector}`);
-    }
-    this.container = container;
+    this.container = ensureElement<HTMLElement>(containerSelector);
   }
 
-  render(items: CardViewData[]) {
-    // очищаем контейнер перед рендером
+  /** Устанавливает готовую разметку списка карточек */
+  set items(items: HTMLElement[]) {
     this.container.innerHTML = '';
     items.forEach((item) => {
-      const card = new CardView(item);
-      this.container.appendChild(card.getElement());
+      this.container.appendChild(item);
     });
   }
 }

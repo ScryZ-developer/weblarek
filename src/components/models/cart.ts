@@ -1,18 +1,16 @@
 import { IProduct } from '../../types/index.ts';
+import { EventEmitter } from '../base/Events';
 
 // Класс Cart - Отвечает за хранение и управление корзиной товаров.
 
 export class Cart {
-  private items: IProduct[]; // товары, добавленные в корзину
+  private items: IProduct[] = []; // товары, добавленные в корзину
 
   /**
    * Конструктор класса Cart
-   * @param items - массив товаров (по умолчанию пустой)
    */
 
-  constructor(items: IProduct[] = []) {
-    this.items = items;
-  }
+  constructor(private events: EventEmitter) {}
 
   /**
    * Получить массив товаров в корзине
@@ -29,6 +27,7 @@ export class Cart {
    */
   addItem(product: IProduct): void {
     this.items.push(product);
+    this.events.emit('cart:change');
   }
 
   /**
@@ -37,11 +36,13 @@ export class Cart {
    */
   removeItem(product: IProduct): void {
     this.items = this.items.filter(item => item.id !== product.id);
+    this.events.emit('cart:change');
   }
 
   // Очистить корзину
   clear(): void {
     this.items = [];
+    this.events.emit('cart:change');
   }
 
   /**

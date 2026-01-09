@@ -1,19 +1,15 @@
 import { IBuyer } from "../../types";
+import { EventEmitter } from "../base/Events";
 
 // Класс Buyer — управляет данными покупателя
 
 export class Buyer {
-  private payment: IBuyer["payment"]; // способ оплаты
-  private email: string;              // email покупателя
-  private phone: string;              // телефон покупателя
-  private address: string;            // адрес доставки
+  private payment: IBuyer["payment"] = ""; // способ оплаты
+  private email: string = "";              // email покупателя
+  private phone: string = "";              // телефон покупателя
+  private address: string = "";            // адрес доставки
 
-  constructor(data?: Partial<IBuyer>) {
-    this.payment = data?.payment || ""; // по умолчанию пустая строка
-    this.email = data?.email || "";
-    this.phone = data?.phone || "";
-    this.address = data?.address || "";
-  }
+  constructor(private events: EventEmitter) {}
 
   /**
    * Устанавливает данные покупателя
@@ -24,6 +20,19 @@ export class Buyer {
     if (data.email !== undefined) this.email = data.email;
     if (data.phone !== undefined) this.phone = data.phone;
     if (data.address !== undefined) this.address = data.address;
+    
+    // Эмитим событие обновления модели покупателя
+    this.events.emit('buyer:change');
+  }
+
+  /**
+   * Устанавливает одно поле покупателя
+   * @param key - ключ поля
+   * @param value - значение поля
+   */
+  setField<K extends keyof IBuyer>(key: K, value: IBuyer[K]): void {
+    (this as any)[key] = value;
+    this.events.emit('buyer:change');
   }
 
   // Возвращает все данные покупателя
@@ -42,6 +51,9 @@ export class Buyer {
     this.email = "";
     this.phone = "";
     this.address = "";
+    
+    // Эмитим событие обновления модели покупателя
+    this.events.emit('buyer:change');
   }
 
   /**
@@ -54,12 +66,24 @@ export class Buyer {
     if (!this.payment) {
       errors.payment = 'Не выбран вид оплаты';
     }
-    if (!this.email?.trim()) {
+    
+    const email = this.email?.trim() || '';
+    if (!email) {
       errors.email = 'Укажите email';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Неверный email';
     }
-    if (!this.phone?.trim()) {
+    
+    const phone = this.phone?.trim() || '';
+    if (!phone) {
       errors.phone = 'Укажите телефон';
+    } else {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length < 10) {
+        errors.phone = 'Неверный телефон';
+      }
     }
+    
     if (!this.address?.trim()) {
       errors.address = 'Укажите адрес';
     }

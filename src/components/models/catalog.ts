@@ -1,14 +1,12 @@
 import { IProduct } from "../../types";
+import { EventEmitter } from "../base/Events";
 
 // Класс Catalog — управляет списком товаров и выбранным товаром
 export class Catalog {
-  private products: IProduct[]; // список товаров
-  private selectedProduct: IProduct | null; // текущий выбранный товар
+  private products: IProduct[] = []; // список товаров
+  private selectedProduct: IProduct | null = null; // текущий выбранный товар
 
-  constructor(products: IProduct[] = []) {
-    this.products = products;
-    this.selectedProduct = null;
-  }
+  constructor(private events: EventEmitter) {}
 
   /**
    * Задает массив товаров
@@ -16,6 +14,7 @@ export class Catalog {
    */
   setProducts(products: IProduct[]): void {
     this.products = products;
+    this.events.emit('catalog:change');
   }
 
   // Возвращает все товары каталога
@@ -37,6 +36,7 @@ export class Catalog {
    */
   setSelectedProduct(product: IProduct): void {
     this.selectedProduct = product;
+    this.events.emit('catalog:product-selected');
   }
 
   // Возвращает текущий выбранный товар
