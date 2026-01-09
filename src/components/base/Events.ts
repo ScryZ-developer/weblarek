@@ -7,6 +7,7 @@ type EmitterEvent = {
     data: unknown
 };
 
+
 export interface IEvents {
     on<T extends object>(event: EventName, callback: (data: T) => void): void;
     emit<T extends object>(event: string, data?: T): void;
@@ -89,3 +90,4 @@ export class EventEmitter implements IEvents {
     }
 }
 
+export const events = new EventEmitter();
