@@ -1,7 +1,7 @@
 import { cloneTemplate } from '../../utils/template';
 import { categoryMap } from '../../utils/constants';
 import { IProduct } from '../../types/index';
-import { resolveImagePath } from '../../utils/utils';
+import { resolveImagePath, ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 
 export class ProductPreviewView {
@@ -15,12 +15,12 @@ export class ProductPreviewView {
 
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLElement>('card-preview');
-    this.titleEl = this.element.querySelector('.card__title')!;
-    this.descriptionEl = this.element.querySelector('.card__text')!;
-    this.priceEl = this.element.querySelector('.card__price')!;
-    this.categoryEl = this.element.querySelector('.card__category')!;
-    this.imageEl = this.element.querySelector('.card__image')!;
-    this.buttonEl = this.element.querySelector('.card__button')!;
+    this.titleEl = ensureElement<HTMLElement>('.card__title', this.element);
+    this.descriptionEl = ensureElement<HTMLElement>('.card__text', this.element);
+    this.priceEl = ensureElement<HTMLElement>('.card__price', this.element);
+    this.categoryEl = ensureElement<HTMLElement>('.card__category', this.element);
+    this.imageEl = ensureElement<HTMLImageElement>('.card__image', this.element);
+    this.buttonEl = ensureElement<HTMLButtonElement>('.card__button', this.element);
 
     // Обработчик кнопки устанавливается один раз
     this.buttonEl.addEventListener('click', () => {
@@ -37,10 +37,12 @@ export class ProductPreviewView {
     // Цена
     this.setPrice(product.price);
 
-    // Категория + модификатор
-    const entry = Object.values(categoryMap).find((c) => c.mod === product.category);
-    this.categoryEl.className = `card__category card__category_${product.category}`;
-    this.categoryEl.textContent = entry?.label || product.category;
+    // Категория + модификатор (нормализация происходит в представлении)
+    const entry = categoryMap[product.category];
+    const normalizedMod = entry?.mod || 'other';
+    const label = entry?.label || product.category;
+    this.categoryEl.className = `card__category card__category_${normalizedMod}`;
+    this.categoryEl.textContent = label;
 
     // Картинка
     this.imageEl.src = resolveImagePath(product.image);

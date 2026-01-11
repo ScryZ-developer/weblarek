@@ -1,6 +1,6 @@
 import { cloneTemplate } from '../../utils/template';
 import { categoryMap } from '../../utils/constants';
-import { resolveImagePath } from '../../utils/utils';
+import { resolveImagePath, ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 
 export interface CardViewData {
@@ -20,10 +20,10 @@ export class CardView {
 
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLButtonElement>('card-catalog');
-    this.titleEl = this.element.querySelector('.card__title')!;
-    this.priceEl = this.element.querySelector('.card__price')!;
-    this.categoryEl = this.element.querySelector('.card__category')!;
-    this.imageEl = this.element.querySelector('.card__image')!;
+    this.titleEl = ensureElement<HTMLElement>('.card__title', this.element);
+    this.priceEl = ensureElement<HTMLElement>('.card__price', this.element);
+    this.categoryEl = ensureElement<HTMLElement>('.card__category', this.element);
+    this.imageEl = ensureElement<HTMLImageElement>('.card__image', this.element);
   }
 
   render(data: CardViewData): HTMLButtonElement {
@@ -53,9 +53,12 @@ export class CardView {
   }
 
   private setCategory(category: string) {
-    const entry = Object.values(categoryMap).find((c) => c.mod === category);
+    // Нормализация категории происходит в представлении
+    const entry = categoryMap[category];
+    const normalizedMod = entry?.mod || 'other';
+    const label = entry?.label || category;
 
-    this.categoryEl.textContent = entry?.label || category;
-    this.categoryEl.className = `card__category card__category_${entry?.mod || 'other'}`;
+    this.categoryEl.textContent = label;
+    this.categoryEl.className = `card__category card__category_${normalizedMod}`;
   }
 }

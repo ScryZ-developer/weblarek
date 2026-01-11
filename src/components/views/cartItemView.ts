@@ -1,4 +1,5 @@
 import { cloneTemplate } from '../../utils/template';
+import { ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 import { IProduct } from '../../types';
 
@@ -11,10 +12,10 @@ export class CartItemView {
 
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLLIElement>('card-basket');
-    this.indexEl = this.element.querySelector('.basket__item-index')!;
-    this.titleEl = this.element.querySelector('.card__title')!;
-    this.priceEl = this.element.querySelector('.card__price')!;
-    this.deleteButton = this.element.querySelector('.basket__item-delete')!;
+    this.indexEl = ensureElement<HTMLElement>('.basket__item-index', this.element);
+    this.titleEl = ensureElement<HTMLElement>('.card__title', this.element);
+    this.priceEl = ensureElement<HTMLElement>('.card__price', this.element);
+    this.deleteButton = ensureElement<HTMLElement>('.basket__item-delete', this.element);
 
     this.deleteButton.addEventListener('click', () => {
       // Событие будет установлено в render с правильным продуктом

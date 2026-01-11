@@ -20,7 +20,6 @@ import { CardView } from './components/views/cardView';
 
 import { IProduct } from '../src/types';
 import { EventNames } from '../src/utils/utils';
-import { normalizeCategory } from './utils/mapper';
 
 // Создание экземпляров в глобальной области
 const events = new EventEmitter();
@@ -89,7 +88,7 @@ class AppPresenter {
           id: product.id,
           title: product.title,
           price: product.price ?? null,
-          category: normalizeCategory(product.category),
+          category: product.category, // Передаем исходную категорию, нормализация в представлении
           image: product.image,
         };
         return cardView.render(cardData);
@@ -102,13 +101,9 @@ class AppPresenter {
       const product = this.catalog.getProductById(id);
       if (!product) return;
       
-      const normalizedProduct = {
-        ...product,
-        category: normalizeCategory(product.category),
-      };
-      
       // Изменение модели - вызовет событие catalog:product-selected
-      this.catalog.setSelectedProduct(normalizedProduct);
+      // Модель записывает данные как есть, нормализация происходит в представлении
+      this.catalog.setSelectedProduct(product);
     });
 
     // Событие выбора продукта - обновление представления preview

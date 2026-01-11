@@ -1,4 +1,5 @@
 import { cloneTemplate } from '../../utils/template';
+import { ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 
 /**
@@ -16,10 +17,10 @@ export class ContactsFormView {
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLFormElement>('contacts');
 
-    this.emailInput = this.element.querySelector('input[name="email"]')!;
-    this.phoneInput = this.element.querySelector('input[name="phone"]')!;
-    this.errorsEl = this.element.querySelector('.form__errors')!;
-    this.submitBtn = this.element.querySelector('button[type="submit"]')!;
+    this.emailInput = ensureElement<HTMLInputElement>('input[name="email"]', this.element);
+    this.phoneInput = ensureElement<HTMLInputElement>('input[name="phone"]', this.element);
+    this.errorsEl = ensureElement<HTMLElement>('.form__errors', this.element);
+    this.submitBtn = ensureElement<HTMLButtonElement>('button[type="submit"]', this.element);
 
     // Обработчики полей ввода
     this.emailInput.addEventListener('input', () => {

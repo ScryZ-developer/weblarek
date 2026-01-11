@@ -1,4 +1,5 @@
 import { cloneTemplate } from '../../utils/template';
+import { ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 
 export class CartView {
@@ -9,9 +10,13 @@ export class CartView {
 
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLElement>('basket');
-    this.listEl = this.element.querySelector('.basket__list')!;
-    this.totalEl = this.element.querySelector('.basket__price')!;
-    this.orderButton = this.element.querySelector('.basket__button')!;
+    this.listEl = ensureElement<HTMLElement>('.basket__list', this.element);
+    this.totalEl = ensureElement<HTMLElement>('.basket__price', this.element);
+    this.orderButton = ensureElement<HTMLButtonElement>('.basket__button', this.element);
+
+    // Инициализация пустого списка при создании
+    this.items = [];
+    this.orderButtonDisabled = true; // Кнопка должна быть неактивна при пустой корзине
 
     this.orderButton.addEventListener('click', () => {
       this.events.emit('cart:order');

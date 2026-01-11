@@ -1,4 +1,5 @@
 import { cloneTemplate } from '../../utils/template';
+import { ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 import { IBuyer } from '../../types';
 
@@ -20,11 +21,11 @@ export class OrderFormView {
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLFormElement>('order');
 
-    this.btnCard = this.element.querySelector<HTMLButtonElement>('button[name="card"]')!;
-    this.btnCash = this.element.querySelector<HTMLButtonElement>('button[name="cash"]')!;
-    this.addressInput = this.element.querySelector<HTMLInputElement>('input[name="address"]')!;
-    this.submitBtn = this.element.querySelector<HTMLButtonElement>('.order__button')!;
-    this.errorEl = this.element.querySelector<HTMLElement>('.form__errors')!;
+    this.btnCard = ensureElement<HTMLButtonElement>('button[name="card"]', this.element);
+    this.btnCash = ensureElement<HTMLButtonElement>('button[name="cash"]', this.element);
+    this.addressInput = ensureElement<HTMLInputElement>('input[name="address"]', this.element);
+    this.submitBtn = ensureElement<HTMLButtonElement>('.order__button', this.element);
+    this.errorEl = ensureElement<HTMLElement>('.form__errors', this.element);
 
     // Обработчики кнопок оплаты
     this.btnCard.addEventListener('click', () => {

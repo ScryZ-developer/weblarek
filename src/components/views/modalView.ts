@@ -1,4 +1,5 @@
 // src/components/Views/ModalView.ts
+import { ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 
 export class ModalView {
@@ -10,21 +11,18 @@ export class ModalView {
   constructor(_events: EventEmitter, rootOrSelector: HTMLElement | string = '#modal-container') {
     const root =
       typeof rootOrSelector === 'string'
-        ? document.querySelector<HTMLElement>(rootOrSelector)
+        ? ensureElement<HTMLElement>(rootOrSelector)
         : rootOrSelector;
 
-    if (!root) {
-      throw new Error('Modal root element not found (' + rootOrSelector + ')');
-    }
     this.root = root;
 
-    const content = this.root.querySelector<HTMLElement>('.modal__content');
-    if (!content) {
-      throw new Error('Modal content element (.modal__content) not found inside modal root');
-    }
-    this.contentContainer = content;
+    this.contentContainer = ensureElement<HTMLElement>('.modal__content', this.root);
 
-    this.closeButton = this.root.querySelector<HTMLButtonElement>('.modal__close');
+    try {
+      this.closeButton = ensureElement<HTMLButtonElement>('.modal__close', this.root);
+    } catch {
+      this.closeButton = null;
+    }
 
     this.onOverlayClick = this.onOverlayClick.bind(this);
     this.onCloseClick = this.onCloseClick.bind(this);

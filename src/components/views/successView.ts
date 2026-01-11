@@ -1,5 +1,6 @@
 // src/components/Views/SuccessView.ts
 import { cloneTemplate } from '../../utils/template';
+import { ensureElement } from '../../utils/utils';
 import { EventEmitter } from '../base/Events';
 
 export class SuccessView {
@@ -9,8 +10,8 @@ export class SuccessView {
 
   constructor(private events: EventEmitter) {
     this.element = cloneTemplate<HTMLElement>('success');
-    this.descriptionEl = this.element.querySelector('.order-success__description')!;
-    this.closeButton = this.element.querySelector('.order-success__close')!;
+    this.descriptionEl = ensureElement<HTMLElement>('.order-success__description', this.element);
+    this.closeButton = ensureElement<HTMLButtonElement>('.order-success__close', this.element);
 
     // обработчик кнопки закрытия
     this.closeButton.addEventListener('click', () => {
